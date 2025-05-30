@@ -1,0 +1,32 @@
+# 开发环境依赖包
+# 包含生产环境的所有依赖
+-r requirements.txt
+
+# 测试工具
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+
+# 代码质量工具
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.12.0
+mypy>=1.0.0
+
+# 文档工具
+mkdocs>=1.4.0
+mkdocs-material>=9.0.0
+mkdocs-mermaid2-plugin>=0.6.0
+
+# 开发工具
+pre-commit>=3.0.0
+jupyter>=1.0.0
+ipython>=8.0.0
+
+# 性能分析
+memory-profiler>=0.60.0
+line-profiler>=4.0.0
+
+# 安全检查
+bandit>=1.7.0
+safety>=2.3.0 
