@@ -337,9 +337,41 @@ class StreamlitApp:
                     price_data = cloud_fetcher.fetch_price_data_with_fallback(
                         trade_date_str, progress_callback
                     )
-                
-                # 使用标准分析引擎
-                results = self.engine.full_analysis(trade_date_str, progress_callback)
+                    
+                    # 直接进行分析，不再重复获取数据
+                    progress_callback("开始分析持仓数据...", 0.8)
+                    
+                    # 加载已获取的持仓数据
+                    position_data = self.engine.data_manager.load_position_data()
+                    position_results = self.engine._analyze_positions(position_data, progress_callback)
+                    
+                    # 期限结构分析
+                    progress_callback("开始期限结构分析...", 0.9)
+                    term_results = []
+                    if not price_data.empty:
+                        term_results = self.engine.term_analyzer.analyze_term_structure(price_data)
+                    
+                    # 构建结果
+                    results = {
+                        'position_analysis': position_results,
+                        'term_structure': term_results,
+                        'summary': {},
+                        'metadata': {
+                            'trade_date': trade_date_str,
+                            'analysis_time': datetime.now().isoformat(),
+                            'include_term_structure': True,
+                            'retail_seats': st.session_state.retail_seats
+                        }
+                    }
+                    
+                    # 生成总结
+                    progress_callback("生成分析总结...", 0.95)
+                    results['summary'] = self.engine._generate_summary(results)
+                    
+                    progress_callback("分析完成", 1.0)
+                else:
+                    # 使用标准分析引擎
+                    results = self.engine.full_analysis(trade_date_str, progress_callback)
             
             # 清除进度显示
             progress_bar.empty()
