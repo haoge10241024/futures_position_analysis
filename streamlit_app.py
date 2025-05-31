@@ -338,20 +338,51 @@ class StreamlitApp:
                         trade_date_str, progress_callback
                     )
                     
+                    # 添加调试信息
+                    st.info(f"🔍 调试：行情数据获取完成，数据形状: {price_data.shape}")
+                    
                     # 直接进行分析，不再重复获取数据
                     progress_callback("开始分析持仓数据...", 0.8)
+                    st.info("🔍 调试：开始加载持仓数据...")
                     
                     # 加载已获取的持仓数据
-                    position_data = self.engine.data_manager.load_position_data()
-                    position_results = self.engine._analyze_positions(position_data, progress_callback)
+                    try:
+                        position_data = self.engine.data_manager.load_position_data()
+                        st.info(f"🔍 调试：持仓数据加载完成，合约数量: {len(position_data)}")
+                    except Exception as e:
+                        st.error(f"❌ 持仓数据加载失败: {str(e)}")
+                        return
+                    
+                    # 检查是否有数据
+                    if not position_data:
+                        st.error("❌ 没有找到持仓数据文件")
+                        return
+                    
+                    st.info("🔍 调试：开始分析持仓数据...")
+                    try:
+                        position_results = self.engine._analyze_positions(position_data, progress_callback)
+                        st.info(f"🔍 调试：持仓分析完成，分析了 {len(position_results)} 个合约")
+                    except Exception as e:
+                        st.error(f"❌ 持仓分析失败: {str(e)}")
+                        return
                     
                     # 期限结构分析
                     progress_callback("开始期限结构分析...", 0.9)
+                    st.info("🔍 调试：开始期限结构分析...")
+                    
                     term_results = []
-                    if not price_data.empty:
-                        term_results = self.engine.term_analyzer.analyze_term_structure(price_data)
+                    try:
+                        if not price_data.empty:
+                            term_results = self.engine.term_analyzer.analyze_term_structure(price_data)
+                            st.info(f"🔍 调试：期限结构分析完成，结果数量: {len(term_results)}")
+                        else:
+                            st.info("🔍 调试：行情数据为空，跳过期限结构分析")
+                    except Exception as e:
+                        st.warning(f"⚠️ 期限结构分析失败: {str(e)}")
+                        term_results = []
                     
                     # 构建结果
+                    st.info("🔍 调试：构建分析结果...")
                     results = {
                         'position_analysis': position_results,
                         'term_structure': term_results,
@@ -366,9 +397,18 @@ class StreamlitApp:
                     
                     # 生成总结
                     progress_callback("生成分析总结...", 0.95)
-                    results['summary'] = self.engine._generate_summary(results)
+                    st.info("🔍 调试：生成分析总结...")
+                    
+                    try:
+                        results['summary'] = self.engine._generate_summary(results)
+                        st.info("🔍 调试：分析总结生成完成")
+                    except Exception as e:
+                        st.error(f"❌ 分析总结生成失败: {str(e)}")
+                        return
                     
                     progress_callback("分析完成", 1.0)
+                    st.info("🔍 调试：所有分析步骤完成")
+                    
                 else:
                     # 使用标准分析引擎
                     results = self.engine.full_analysis(trade_date_str, progress_callback)
@@ -388,6 +428,8 @@ class StreamlitApp:
                 
         except Exception as e:
             st.error(f"❌ 分析过程出错: {str(e)}")
+            import traceback
+            st.error(f"详细错误信息: {traceback.format_exc()}")
             
         finally:
             st.session_state.analysis_running = False
