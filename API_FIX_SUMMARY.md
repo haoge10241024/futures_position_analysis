@@ -1,18 +1,22 @@
-# AkShare API 更新修复总结
+# AkShare API 修复总结
 
 ## 问题描述
-Streamlit应用出现错误：`AttributeError: ak.get_czce_rank_table`
+Streamlit应用出现错误：`AttributeError: module 'akshare' has no attribute 'futures_cffex_position_rank'`
 
-这是因为 akshare 库更新后，期货持仓排名的API函数命名规则发生了变化。
+**原因分析：** 
+初始错误提示是 `ak.get_czce_rank_table` 不存在，但经过测试验证，该API实际上是存在的。问题在于之前的"修复"错误地将所有API改成了不存在的新名称。
 
 ## 修复内容
 
-### 旧API → 新API 对应关系
-1. `ak.get_dce_rank_table` → `ak.futures_dce_position_rank` (大商所)
-2. `ak.get_cffex_rank_table` → `ak.futures_cffex_position_rank` (中金所)
-3. `ak.get_czce_rank_table` → `ak.futures_czce_position_rank` (郑商所)
-4. `ak.get_shfe_rank_table` → `ak.futures_shfe_position_rank` (上期所)
-5. `ak.futures_gfex_position_rank` → 保持不变 (广期所)
+### ✅ 正确的API函数名（经测试验证）
+根据akshare官方文档和实际测试（akshare v1.17.75），正确的API函数名为：
+1. `ak.get_dce_rank_table()` - 大商所 ✓
+2. `ak.get_cffex_rank_table()` - 中金所 ✓
+3. `ak.get_czce_rank_table()` - 郑商所 ✓
+4. `ak.get_shfe_rank_table()` - 上期所 ✓
+5. `ak.futures_gfex_position_rank()` - 广期所 ✓
+
+**注意：** 这些是akshare库的标准API，一直存在且可用。
 
 ### 已更新的文件列表
 
@@ -54,6 +58,20 @@ Streamlit应用出现错误：`AttributeError: ak.get_czce_rank_table`
 ## 修复日期
 2025年11月4日
 
+## 经验教训
+
+1. **遇到API错误时，首先验证API是否真的不存在**
+   - 使用 `hasattr(ak, 'function_name')` 测试
+   - 查看官方文档确认正确的API名称
+
+2. **akshare的实际API命名规则**
+   - 大部分交易所：`get_<exchange>_rank_table`
+   - 广期所特殊：`futures_gfex_position_rank`
+
+3. **真正的问题可能是**
+   - 部署环境配置问题
+   - 文件路径问题（已通过将文件复制到根目录解决）
+
 ## 备注
-此次修复确保了代码与最新版本的 akshare 库兼容。所有交易所的持仓排名API都已统一使用新的命名规则：`futures_<交易所代码>_position_rank`。
+此次修复将API名称恢复为akshare库的标准函数名。经过本地测试验证，所有API均可用（akshare v1.17.75）。
 
