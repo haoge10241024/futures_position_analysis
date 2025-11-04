@@ -140,14 +140,14 @@ def cached_data_fetch(func_name: str, date: str, exchange: str = None):
     import akshare as ak
     
     try:
-        if func_name == "futures_dce_position_rank":
-            return ak.futures_dce_position_rank(date=date)
-        elif func_name == "futures_cffex_position_rank":
-            return ak.futures_cffex_position_rank(date=date)
-        elif func_name == "futures_czce_position_rank":
-            return ak.futures_czce_position_rank(date=date)
-        elif func_name == "futures_shfe_position_rank":
-            return ak.futures_shfe_position_rank(date=date)
+        if func_name == "get_dce_rank_table":
+            return ak.get_dce_rank_table(date=date)
+        elif func_name == "get_cffex_rank_table":
+            return ak.get_cffex_rank_table(date=date)
+        elif func_name == "get_czce_rank_table":
+            return ak.get_czce_rank_table(date=date)
+        elif func_name == "get_shfe_rank_table":
+            return ak.get_shfe_rank_table(date=date)
         elif func_name == "futures_gfex_position_rank":
             return ak.futures_gfex_position_rank(date=date)
         elif func_name == "get_futures_daily" and exchange:
@@ -168,25 +168,25 @@ class FastDataManager:
         # 交易所配置 - 按优先级排序
         self.exchange_config = {
             "大商所": {
-                "func_name": "futures_dce_position_rank",
+                "func_name": "get_dce_rank_table",
                 "filename": "大商所持仓.xlsx",
                 "priority": 1,
                 "timeout": 30
             },
             "中金所": {
-                "func_name": "futures_cffex_position_rank", 
+                "func_name": "get_cffex_rank_table", 
                 "filename": "中金所持仓.xlsx",
                 "priority": 2,
                 "timeout": 30
             },
             "郑商所": {
-                "func_name": "futures_czce_position_rank",
+                "func_name": "get_czce_rank_table",
                 "filename": "郑商所持仓.xlsx", 
                 "priority": 3,
                 "timeout": 30
             },
             "上期所": {
-                "func_name": "futures_shfe_position_rank",
+                "func_name": "get_shfe_rank_table",
                 "filename": "上期所持仓.xlsx",
                 "priority": 4,
                 "timeout": 30

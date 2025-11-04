@@ -30,22 +30,22 @@ class FuturesDataManager:
         # 交易所配置
         self.exchange_config = {
             "大商所": {
-                "func": ak.futures_dce_position_rank,
+                "func": ak.get_dce_rank_table,
                 "filename": "大商所持仓.xlsx",
                 "priority": 1
             },
             "中金所": {
-                "func": ak.futures_cffex_position_rank,
+                "func": ak.get_cffex_rank_table,
                 "filename": "中金所持仓.xlsx",
                 "priority": 2
             },
             "郑商所": {
-                "func": ak.futures_czce_position_rank,
+                "func": ak.get_czce_rank_table,
                 "filename": "郑商所持仓.xlsx",
                 "priority": 3
             },
             "上期所": {
-                "func": ak.futures_shfe_position_rank,
+                "func": ak.get_shfe_rank_table,
                 "filename": "上期所持仓.xlsx",
                 "priority": 4
             },

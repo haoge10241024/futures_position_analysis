@@ -112,28 +112,28 @@ class CloudDataFetcher:
         exchanges = [
             {
                 "name": "大商所",
-                "func": ak.futures_dce_position_rank,
+                "func": ak.get_dce_rank_table,
                 "filename": "大商所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "中金所", 
-                "func": ak.futures_cffex_position_rank,
+                "func": ak.get_cffex_rank_table,
                 "filename": "中金所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "郑商所",
-                "func": ak.futures_czce_position_rank,
+                "func": ak.get_czce_rank_table,
                 "filename": "郑商所持仓.xlsx", 
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "上期所",
-                "func": ak.futures_shfe_position_rank,
+                "func": ak.get_shfe_rank_table,
                 "filename": "上期所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
@@ -449,25 +449,25 @@ class CloudDataFetcher:
         exchanges = [
             {
                 "name": "大商所",
-                "func": ak.futures_dce_position_rank,
+                "func": ak.get_dce_rank_table,
                 "filename": "大商所持仓.xlsx",
                 "args": {"date": trade_date}
             },
             {
                 "name": "中金所", 
-                "func": ak.futures_cffex_position_rank,
+                "func": ak.get_cffex_rank_table,
                 "filename": "中金所持仓.xlsx",
                 "args": {"date": trade_date}
             },
             {
                 "name": "郑商所",
-                "func": ak.futures_czce_position_rank,
+                "func": ak.get_czce_rank_table,
                 "filename": "郑商所持仓.xlsx", 
                 "args": {"date": trade_date}
             },
             {
                 "name": "上期所",
-                "func": ak.futures_shfe_position_rank,
+                "func": ak.get_shfe_rank_table,
                 "filename": "上期所持仓.xlsx",
                 "args": {"date": trade_date}
             }
@@ -550,28 +550,28 @@ class CloudDataFetcher:
         exchanges = [
             {
                 "name": "大商所",
-                "func": ak.futures_dce_position_rank,
+                "func": ak.get_dce_rank_table,
                 "filename": "大商所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "中金所", 
-                "func": ak.futures_cffex_position_rank,
+                "func": ak.get_cffex_rank_table,
                 "filename": "中金所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "郑商所",
-                "func": ak.futures_czce_position_rank,
+                "func": ak.get_czce_rank_table,
                 "filename": "郑商所持仓.xlsx", 
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "上期所",
-                "func": ak.futures_shfe_position_rank,
+                "func": ak.get_shfe_rank_table,
                 "filename": "上期所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
