@@ -144,8 +144,8 @@ def cached_data_fetch(func_name: str, date: str, exchange: str = None):
             return ak.get_dce_rank_table(date=date)
         elif func_name == "get_cffex_rank_table":
             return ak.get_cffex_rank_table(date=date)
-        elif func_name == "get_rank_table_czce":
-            return ak.get_rank_table_czce(date=date)
+        elif func_name == "get_czce_rank_table":
+            return ak.get_czce_rank_table(date=date)
         elif func_name == "get_shfe_rank_table":
             return ak.get_shfe_rank_table(date=date)
         elif func_name == "futures_gfex_position_rank":
@@ -180,7 +180,7 @@ class FastDataManager:
                 "timeout": 30
             },
             "郑商所": {
-                "func_name": "get_rank_table_czce",
+                "func_name": "get_czce_rank_table",
                 "filename": "郑商所持仓.xlsx", 
                 "priority": 3,
                 "timeout": 30
