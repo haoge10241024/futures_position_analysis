@@ -9,14 +9,16 @@ Streamlit应用出现错误：`AttributeError: module 'akshare' has no attribute
 ## 修复内容
 
 ### ✅ 正确的API函数名（经测试验证）
-根据akshare官方文档和实际测试（akshare v1.17.75），正确的API函数名为：
+根据akshare官方文档，正确的API函数名为：
 1. `ak.get_dce_rank_table()` - 大商所 ✓
 2. `ak.get_cffex_rank_table()` - 中金所 ✓
-3. `ak.get_czce_rank_table()` - 郑商所 ✓
+3. `ak.get_rank_table_czce()` - 郑商所 ⚠️ **注意顺序！**
 4. `ak.get_shfe_rank_table()` - 上期所 ✓
 5. `ak.futures_gfex_position_rank()` - 广期所 ✓
 
-**注意：** 这些是akshare库的标准API，一直存在且可用。
+**重要提示：** 郑商所的API函数名顺序与其他交易所不同！
+- 其他交易所：`get_<exchange>_rank_table`
+- 郑商所特殊：`get_rank_table_czce` （rank_table在前）
 
 ### 已更新的文件列表
 
@@ -65,7 +67,8 @@ Streamlit应用出现错误：`AttributeError: module 'akshare' has no attribute
    - 查看官方文档确认正确的API名称
 
 2. **akshare的实际API命名规则**
-   - 大部分交易所：`get_<exchange>_rank_table`
+   - 大商所、中金所、上期所：`get_<exchange>_rank_table`
+   - 郑商所特殊：`get_rank_table_czce` （顺序颠倒）
    - 广期所特殊：`futures_gfex_position_rank`
 
 3. **真正的问题可能是**
