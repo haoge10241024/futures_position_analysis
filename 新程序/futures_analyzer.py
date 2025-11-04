@@ -40,7 +40,7 @@ class FuturesDataManager:
                 "priority": 2
             },
             "郑商所": {
-                "func": ak.get_czce_rank_table,
+                "func": ak.get_rank_table_czce,
                 "filename": "郑商所持仓.xlsx",
                 "priority": 3
             },
