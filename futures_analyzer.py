@@ -23,11 +23,25 @@ warnings.filterwarnings('ignore')
 class FuturesDataManager:
     """期货数据管理器 - 负责数据获取和缓存"""
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = "data", use_sina_fetcher: bool = True):
         self.data_dir = data_dir
+        self.use_sina_fetcher = use_sina_fetcher  # 是否使用新浪获取器
         self.ensure_data_directory()
         
-        # 交易所配置
+        # 初始化新浪数据获取器
+        if self.use_sina_fetcher:
+            try:
+                from sina_position_fetcher import SinaPositionFetcher
+                self.sina_fetcher = SinaPositionFetcher(data_dir)
+                print("✅ 新浪持仓数据获取器已启用")
+            except Exception as e:
+                print(f"⚠️ 新浪获取器加载失败，将使用传统方法: {e}")
+                self.use_sina_fetcher = False
+                self.sina_fetcher = None
+        else:
+            self.sina_fetcher = None
+        
+        # 交易所配置（传统方法）
         self.exchange_config = {
             "大商所": {
                 "func": ak.get_dce_rank_table,
@@ -72,7 +86,7 @@ class FuturesDataManager:
     
     def fetch_position_data(self, trade_date: str, progress_callback=None) -> bool:
         """
-        获取持仓数据
+        获取持仓数据（支持新浪获取器和传统方法）
         :param trade_date: 交易日期 YYYYMMDD
         :param progress_callback: 进度回调函数
         :return: 是否成功
@@ -80,31 +94,66 @@ class FuturesDataManager:
         success_count = 0
         total_exchanges = len(self.exchange_config)
         
-        for i, (exchange_name, config) in enumerate(self.exchange_config.items()):
-            try:
-                if progress_callback:
-                    progress_callback(f"正在获取{exchange_name}数据...", (i + 1) / total_exchanges * 0.6)
-                
-                # 获取数据
-                data_dict = config["func"](date=trade_date)
-                
-                if data_dict:
-                    # 保存到Excel
-                    save_path = os.path.join(self.data_dir, config['filename'])
-                    with pd.ExcelWriter(save_path, engine='openpyxl') as writer:
-                        for sheet_name, df in data_dict.items():
-                            # 清理sheet名称
-                            clean_name = sheet_name[:31].replace("/", "-").replace("*", "")
-                            df.to_excel(writer, sheet_name=clean_name, index=False)
+        # 优先使用新浪获取器
+        if self.use_sina_fetcher and self.sina_fetcher:
+            print("\n" + "="*60)
+            print("使用新浪期货持仓数据获取器")
+            print("="*60)
+            
+            for i, (exchange_name, config) in enumerate(self.exchange_config.items()):
+                try:
+                    if progress_callback:
+                        progress_callback(f"正在获取{exchange_name}数据（新浪API）...", (i + 1) / total_exchanges * 0.6)
                     
-                    success_count += 1
+                    # 使用新浪获取器
+                    data_dict = self.sina_fetcher.fetch_exchange_data(exchange_name, trade_date)
                     
-            except Exception as e:
-                print(f"获取{exchange_name}数据失败: {str(e)}")
-                continue
+                    if data_dict:
+                        # 保存到Excel
+                        self.sina_fetcher.save_to_excel(data_dict, config['filename'])
+                        success_count += 1
+                    else:
+                        print(f"⚠️ {exchange_name}数据获取失败，跳过")
+                        
+                except Exception as e:
+                    print(f"❌ 获取{exchange_name}数据失败: {str(e)}")
+                    continue
+        
+        # 如果新浪获取器未启用或失败，使用传统方法
+        else:
+            print("\n" + "="*60)
+            print("使用传统方法获取持仓数据")
+            print("="*60)
+            
+            for i, (exchange_name, config) in enumerate(self.exchange_config.items()):
+                try:
+                    if progress_callback:
+                        progress_callback(f"正在获取{exchange_name}数据...", (i + 1) / total_exchanges * 0.6)
+                    
+                    # 获取数据
+                    data_dict = config["func"](date=trade_date)
+                    
+                    if data_dict:
+                        # 保存到Excel
+                        save_path = os.path.join(self.data_dir, config['filename'])
+                        with pd.ExcelWriter(save_path, engine='openpyxl') as writer:
+                            for sheet_name, df in data_dict.items():
+                                # 清理sheet名称
+                                clean_name = sheet_name[:31].replace("/", "-").replace("*", "")
+                                df.to_excel(writer, sheet_name=clean_name, index=False)
+                        
+                        success_count += 1
+                        
+                except Exception as e:
+                    print(f"获取{exchange_name}数据失败: {str(e)}")
+                    continue
         
         if progress_callback:
             progress_callback("持仓数据获取完成", 0.6)
+        
+        print(f"\n{'='*60}")
+        print(f"持仓数据获取完成: {success_count}/{total_exchanges} 个交易所成功")
+        print(f"{'='*60}\n")
         
         return success_count > 0
     
@@ -826,4 +875,4 @@ if __name__ == "__main__":
         print(f"看多信号: {results['summary']['statistics']['total_long_signals']} 个")
         print(f"看空信号: {results['summary']['statistics']['total_short_signals']} 个")
     else:
-        print("分析失败！") 
+        print("分析失败！")
