@@ -534,7 +534,7 @@ class CloudDataFetcher:
             return False
 
     def fetch_position_data_with_auto_skip(self, trade_date: str, progress_callback=None) -> bool:
-        """获取持仓数据，优先使用新浪获取器"""
+        """获取持仓数据，使用集成数据获取器（交易席位方法）"""
         
         # 尝试导入akshare
         try:
@@ -543,7 +543,17 @@ class CloudDataFetcher:
             st.error("akshare未安装，请联系管理员")
             return False
         
-        # 尝试使用新浪获取器
+        # 优先使用集成数据获取器（交易席位完整逻辑）
+        try:
+            from integrated_data_fetcher import IntegratedDataFetcher
+            st.info("✅ 集成数据获取器已启用（使用交易席位完整逻辑）")
+            return self._fetch_with_integrated_fetcher(trade_date, progress_callback)
+        except ImportError:
+            st.warning("⚠️ 集成获取器未找到，尝试新浪获取器...")
+        except Exception as e:
+            st.warning(f"⚠️ 集成获取器加载失败: {str(e)[:50]}，尝试新浪获取器...")
+        
+        # 后备1：新浪获取器
         try:
             from sina_position_fetcher import SinaPositionFetcher
             st.info("✅ 新浪持仓数据获取器已启用")
@@ -553,8 +563,19 @@ class CloudDataFetcher:
         except Exception as e:
             st.warning(f"⚠️ 新浪获取器加载失败: {str(e)[:50]}，使用传统方法")
         
-        # 传统方法作为后备
+        # 后备2：传统方法
         return self._fetch_with_traditional_method(trade_date, progress_callback)
+    
+    def _fetch_with_integrated_fetcher(self, trade_date: str, progress_callback=None) -> bool:
+        """使用集成数据获取器获取数据（交易席位完整逻辑）"""
+        from integrated_data_fetcher import IntegratedDataFetcher
+        
+        st.info("🌟 使用集成数据获取器（交易席位完整逻辑）")
+        
+        fetcher = IntegratedDataFetcher("data")
+        
+        # 使用集成获取器的统一接口
+        return fetcher.fetch_all_exchanges_data(trade_date, progress_callback)
     
     def _fetch_with_sina_fetcher(self, trade_date: str, progress_callback=None) -> bool:
         """使用新浪获取器获取数据"""
