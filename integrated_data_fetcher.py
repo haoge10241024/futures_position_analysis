@@ -58,17 +58,31 @@ class IntegratedDataFetcher:
     - 输出与现有系统兼容的格式
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = "data", basis_data_path: str = None):
         """
         初始化集成数据获取器
         
         Args:
             data_dir: 数据保存目录
+            basis_data_path: 基差数据路径（用于获取准确的主力合约）
         """
         self.data_dir = data_dir
         self.symbol_names = SYMBOL_NAMES
         self.exchange_symbols = EXCHANGE_SYMBOLS
         self.ensure_data_directory()
+        
+        # 设置基差数据路径
+        if basis_data_path:
+            self.basis_data_path = Path(basis_data_path)
+        else:
+            # 默认路径：交易席位/basis
+            default_basis_path = Path(__file__).parent / "交易席位" / "basis"
+            if default_basis_path.exists():
+                self.basis_data_path = default_basis_path
+                print(f"✅ 找到基差数据目录: {self.basis_data_path}")
+            else:
+                self.basis_data_path = None
+                print("⚠️ 未找到基差数据，将使用简化的主力合约推测方法")
         
         print("✅ 集成数据获取器已初始化（使用交易席位数据获取逻辑）")
     
@@ -76,6 +90,80 @@ class IntegratedDataFetcher:
         """确保数据目录存在"""
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
+    
+    def get_main_contract_from_basis(self, symbol: str, date_str: str) -> Optional[str]:
+        """
+        从基差数据中获取主力合约（最准确的方法）
+        
+        Args:
+            symbol: 品种代码
+            date_str: 日期 YYYYMMDD
+            
+        Returns:
+            主力合约代码
+        """
+        if not self.basis_data_path:
+            return None
+        
+        basis_file = self.basis_data_path / symbol / "basis_data.csv"
+        
+        if not basis_file.exists():
+            return None
+        
+        try:
+            df = pd.read_csv(basis_file)
+            
+            if 'date' not in df.columns or 'dominant_contract' not in df.columns:
+                return None
+            
+            # 转换日期格式
+            df['date'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
+            target_date = datetime.strptime(date_str, '%Y%m%d')
+            
+            # 查找对应日期的主力合约
+            matching_rows = df[df['date'] == target_date]
+            
+            if not matching_rows.empty:
+                contract = str(matching_rows.iloc[0]['dominant_contract']).strip()
+                if contract and contract != 'nan':
+                    # 修复合约代码格式
+                    contract = self._fix_contract_code(contract, symbol)
+                    return contract
+            
+            return None
+            
+        except Exception as e:
+            return None
+    
+    def _fix_contract_code(self, contract: str, symbol: str) -> str:
+        """
+        修复合约代码格式
+        如果数字部分只有3位，在前面补2
+        
+        Args:
+            contract: 原始合约代码
+            symbol: 品种代码
+            
+        Returns:
+            修复后的合约代码
+        """
+        if not contract:
+            return contract
+        
+        import re
+        match = re.match(r'([A-Za-z]+)(\d+)', contract.upper())
+        
+        if match:
+            prefix = match.group(1)
+            digits = match.group(2)
+            
+            # 如果数字部分只有3位，在前面补2
+            if len(digits) == 3:
+                return f"{prefix}2{digits}"
+            else:
+                return contract
+        else:
+            return contract
     
     def get_main_contract_from_symbol(self, symbol: str, date_str: str) -> Optional[str]:
         """
@@ -293,10 +381,15 @@ class IntegratedDataFetcher:
         
         for symbol in symbols:
             try:
-                # 获取主力合约
-                main_contract = self.get_main_contract_from_symbol(symbol, trade_date)
+                # 优先从基差数据获取主力合约
+                main_contract = self.get_main_contract_from_basis(symbol, trade_date)
+                
+                # 如果基差数据中没有，使用简化推测方法
+                if not main_contract:
+                    main_contract = self.get_main_contract_from_symbol(symbol, trade_date)
                 
                 if not main_contract:
+                    print(f"  {symbol} ({self.symbol_names.get(symbol, symbol)}) - 无法确定主力合约 ❌")
                     continue
                 
                 print(f"  {symbol} ({self.symbol_names.get(symbol, symbol)}) - {main_contract}...", end="", flush=True)
