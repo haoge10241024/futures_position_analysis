@@ -355,6 +355,18 @@ class StrategyAnalyzer:
                 'inten_intert.1': 'short_open_interest_chg',
                 'vol': 'vol'
             })
+        # 新的中文列名映射（integrated_data_fetcher生成的格式）
+        elif '会员简称' in df.columns and '多单持仓' in df.columns:
+            df = df.rename(columns={
+                '会员简称': 'long_party_name',  # 同时作为多空方席位名
+                '成交量': 'vol',
+                '多单持仓': 'long_open_interest',
+                '多单变化': 'long_open_interest_chg',
+                '空单持仓': 'short_open_interest',
+                '空单变化': 'short_open_interest_chg'
+            })
+            # 添加short_party_name列（与long_party_name相同）
+            df['short_party_name'] = df['long_party_name']
         
         return df
     
