@@ -546,39 +546,39 @@ class CloudDataFetcher:
         success_count = 0
         total_exchanges = 5
         
-        # 交易所配置 - 广期所设置更短的超时时间
+        # 交易所配置 - 使用字符串名称，延迟加载API
         exchanges = [
             {
                 "name": "大商所",
-                "func": ak.get_dce_rank_table,
+                "func_name": "get_dce_rank_table",
                 "filename": "大商所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "中金所", 
-                "func": ak.get_cffex_rank_table,
+                "func_name": "get_cffex_rank_table",
                 "filename": "中金所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "郑商所",
-                "func": ak.get_czce_rank_table,
+                "func_name": "get_czce_rank_table",
                 "filename": "郑商所持仓.xlsx", 
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "上期所",
-                "func": ak.get_shfe_rank_table,
+                "func_name": "get_shfe_rank_table",
                 "filename": "上期所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 30
             },
             {
                 "name": "广期所",
-                "func": ak.futures_gfex_position_rank,
+                "func_name": "futures_gfex_position_rank",
                 "filename": "广期所持仓.xlsx",
                 "args": {"date": trade_date},
                 "timeout": 20  # 广期所使用更短的超时时间
@@ -596,6 +596,14 @@ class CloudDataFetcher:
             
             try:
                 st.info(f"🔄 正在获取 {exchange['name']} 数据...")
+                
+                # 动态获取API函数
+                func_name = exchange.get('func_name')
+                if not hasattr(ak, func_name):
+                    st.warning(f"⚠️ {exchange['name']}: API {func_name} 不存在，跳过")
+                    continue
+                
+                exchange_func = getattr(ak, func_name)
                 
                 # 记录开始时间
                 start_time = time.time()
@@ -617,7 +625,7 @@ class CloudDataFetcher:
                         
                         def fetch_data():
                             try:
-                                result = self.safe_akshare_call(exchange['func'], **exchange['args'])
+                                result = self.safe_akshare_call(exchange_func, **exchange['args'])
                                 result_queue.put(('success', result))
                             except Exception as e:
                                 result_queue.put(('error', str(e)))
@@ -658,7 +666,7 @@ class CloudDataFetcher:
                         self.max_retries = original_retries
                 else:
                     # 其他交易所使用正常的获取方式
-                    data_dict = self.safe_akshare_call(exchange['func'], **exchange['args'])
+                    data_dict = self.safe_akshare_call(exchange_func, **exchange['args'])
                 
                 end_time = time.time()
                 elapsed_time = end_time - start_time
