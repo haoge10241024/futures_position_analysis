@@ -534,7 +534,7 @@ class CloudDataFetcher:
             return False
 
     def fetch_position_data_with_auto_skip(self, trade_date: str, progress_callback=None) -> bool:
-        """获取持仓数据，自动跳过超时的交易所"""
+        """获取持仓数据，优先使用新浪获取器"""
         
         # 尝试导入akshare
         try:
@@ -542,6 +542,80 @@ class CloudDataFetcher:
         except ImportError:
             st.error("akshare未安装，请联系管理员")
             return False
+        
+        # 尝试使用新浪获取器
+        try:
+            from sina_position_fetcher import SinaPositionFetcher
+            st.info("✅ 新浪持仓数据获取器已启用")
+            return self._fetch_with_sina_fetcher(trade_date, progress_callback)
+        except ImportError:
+            st.warning("⚠️ 新浪获取器未找到，使用传统方法")
+        except Exception as e:
+            st.warning(f"⚠️ 新浪获取器加载失败: {str(e)[:50]}，使用传统方法")
+        
+        # 传统方法作为后备
+        return self._fetch_with_traditional_method(trade_date, progress_callback)
+    
+    def _fetch_with_sina_fetcher(self, trade_date: str, progress_callback=None) -> bool:
+        """使用新浪获取器获取数据"""
+        from sina_position_fetcher import SinaPositionFetcher
+        
+        st.info("🌟 使用新浪持仓数据获取器（更稳定）")
+        
+        fetcher = SinaPositionFetcher("data")
+        success_count = 0
+        total_exchanges = 5
+        
+        exchange_list = ["大商所", "中金所", "郑商所", "上期所", "广期所"]
+        filenames = {
+            "大商所": "大商所持仓.xlsx",
+            "中金所": "中金所持仓.xlsx",
+            "郑商所": "郑商所持仓.xlsx",
+            "上期所": "上期所持仓.xlsx",
+            "广期所": "广期所持仓.xlsx"
+        }
+        
+        for i, exchange_name in enumerate(exchange_list):
+            if progress_callback:
+                progress = i / total_exchanges * 0.6
+                progress_callback(f"正在获取 {exchange_name} 数据（新浪API）...", progress)
+            
+            try:
+                st.info(f"🔄 正在获取 {exchange_name} 数据（新浪API）...")
+                
+                # 使用新浪获取器
+                data_dict = fetcher.fetch_exchange_data(exchange_name, trade_date)
+                
+                if data_dict:
+                    # 保存数据
+                    fetcher.save_to_excel(data_dict, filenames[exchange_name])
+                    st.success(f"✅ {exchange_name} 数据获取成功")
+                    success_count += 1
+                else:
+                    st.warning(f"⚠️ {exchange_name} 数据获取失败，但不影响其他交易所")
+                    
+            except Exception as e:
+                st.warning(f"⚠️ {exchange_name} 数据获取失败: {str(e)[:50]}")
+                continue
+        
+        if progress_callback:
+            progress_callback("持仓数据获取完成", 0.6)
+        
+        if success_count >= 3:
+            st.info(f"✅ 成功获取 {success_count}/{total_exchanges} 个交易所数据")
+            return True
+        elif success_count > 0:
+            st.warning(f"⚠️ 仅获取到 {success_count}/{total_exchanges} 个交易所数据")
+            return True
+        else:
+            st.error("❌ 所有交易所数据获取失败")
+            return False
+    
+    def _fetch_with_traditional_method(self, trade_date: str, progress_callback=None) -> bool:
+        """使用传统方法获取数据（后备）"""
+        import akshare as ak
+        
+        st.info("📊 使用传统方法获取数据")
         
         success_count = 0
         total_exchanges = 5
