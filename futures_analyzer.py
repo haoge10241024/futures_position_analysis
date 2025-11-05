@@ -41,30 +41,30 @@ class FuturesDataManager:
         else:
             self.sina_fetcher = None
         
-        # 交易所配置（传统方法）
+        # 交易所配置（传统方法）- 使用字符串名称，延迟加载API
         self.exchange_config = {
             "大商所": {
-                "func": ak.get_dce_rank_table,
+                "func_name": "get_dce_rank_table",
                 "filename": "大商所持仓.xlsx",
                 "priority": 1
             },
             "中金所": {
-                "func": ak.get_cffex_rank_table,
+                "func_name": "get_cffex_rank_table",
                 "filename": "中金所持仓.xlsx",
                 "priority": 2
             },
             "郑商所": {
-                "func": ak.get_czce_rank_table,
+                "func_name": "get_czce_rank_table",
                 "filename": "郑商所持仓.xlsx",
                 "priority": 3
             },
             "上期所": {
-                "func": ak.get_shfe_rank_table,
+                "func_name": "get_shfe_rank_table",
                 "filename": "上期所持仓.xlsx",
                 "priority": 4
             },
             "广期所": {
-                "func": ak.futures_gfex_position_rank,
+                "func_name": "futures_gfex_position_rank",
                 "filename": "广期所持仓.xlsx",
                 "priority": 5
             }
@@ -130,8 +130,16 @@ class FuturesDataManager:
                     if progress_callback:
                         progress_callback(f"正在获取{exchange_name}数据...", (i + 1) / total_exchanges * 0.6)
                     
+                    # 动态获取API函数
+                    func_name = config.get("func_name")
+                    if not hasattr(ak, func_name):
+                        print(f"⚠️ {exchange_name}: API {func_name} 不存在，跳过")
+                        continue
+                    
+                    func = getattr(ak, func_name)
+                    
                     # 获取数据
-                    data_dict = config["func"](date=trade_date)
+                    data_dict = func(date=trade_date)
                     
                     if data_dict:
                         # 保存到Excel
