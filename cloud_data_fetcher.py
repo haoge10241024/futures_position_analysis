@@ -569,10 +569,28 @@ class CloudDataFetcher:
     def _fetch_with_integrated_fetcher(self, trade_date: str, progress_callback=None) -> bool:
         """使用集成数据获取器获取数据（交易席位完整逻辑）"""
         from integrated_data_fetcher import IntegratedDataFetcher
+        import os
+        from pathlib import Path
         
-        st.info("🌟 使用集成数据获取器（交易席位完整逻辑）")
+        st.info("🌟 使用集成数据获取器（交易席位完整逻辑+基差数据）")
         
-        fetcher = IntegratedDataFetcher("data")
+        # 查找基差数据路径
+        basis_data_path = None
+        possible_paths = [
+            Path(__file__).parent / "交易席位" / "basis",  # 相对于当前文件
+            Path("交易席位") / "basis",  # 当前目录
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                basis_data_path = str(path)
+                st.info(f"✅ 找到基差数据: {basis_data_path}")
+                break
+        
+        if not basis_data_path:
+            st.warning("⚠️ 未找到基差数据，将使用简化的主力合约推测")
+        
+        fetcher = IntegratedDataFetcher("data", basis_data_path=basis_data_path)
         
         # 使用集成获取器的统一接口
         return fetcher.fetch_all_exchanges_data(trade_date, progress_callback)
