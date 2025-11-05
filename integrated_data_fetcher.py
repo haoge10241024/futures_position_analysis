@@ -200,7 +200,7 @@ class IntegratedDataFetcher:
         # 合并所有数据
         combined_df = pd.concat(all_data, ignore_index=True)
         
-        # 按品种和类型分组
+        # 按品种分组
         result = {}
         
         for symbol in combined_df['symbol'].unique():
@@ -210,43 +210,63 @@ class IntegratedDataFetcher:
             symbol_name = self.symbol_names.get(symbol, symbol)
             sheet_name = f"{symbol_name}({symbol})"
             
-            # 创建统一的表格格式（兼容现有分析系统）
-            pivot_data = []
+            # 获取各类型数据（保持原始排名）
+            long_data = symbol_data[symbol_data['position_type'] == '多单持仓'].copy()
+            short_data = symbol_data[symbol_data['position_type'] == '空单持仓'].copy()
+            volume_data = symbol_data[symbol_data['position_type'] == '成交量'].copy()
             
-            # 获取所有会员席位
-            all_seats = sorted(set(symbol_data['会员简称'].unique()))[:20]  # 取前20名
+            # 如果没有任何数据，跳过
+            if long_data.empty and short_data.empty and volume_data.empty:
+                continue
             
-            # 为每个席位创建一行数据
-            for i, seat in enumerate(all_seats, 1):
-                seat_data = {'排名': i, '会员简称': seat}
-                
-                # 获取成交量
-                volume_row = symbol_data[
-                    (symbol_data['会员简称'] == seat) & 
-                    (symbol_data['position_type'] == '成交量')
-                ]
-                seat_data['成交量'] = int(volume_row['成交量'].iloc[0]) if not volume_row.empty and '成交量' in volume_row.columns else 0
-                
-                # 获取多单持仓
-                long_row = symbol_data[
-                    (symbol_data['会员简称'] == seat) & 
-                    (symbol_data['position_type'] == '多单持仓')
-                ]
-                seat_data['多单持仓'] = int(long_row['持仓量'].iloc[0]) if not long_row.empty else 0
-                seat_data['多单变化'] = int(long_row['比上交易增减'].iloc[0]) if not long_row.empty else 0
-                
-                # 获取空单持仓
-                short_row = symbol_data[
-                    (symbol_data['会员简称'] == seat) & 
-                    (symbol_data['position_type'] == '空单持仓')
-                ]
-                seat_data['空单持仓'] = int(short_row['持仓量'].iloc[0]) if not short_row.empty else 0
-                seat_data['空单变化'] = int(short_row['比上交易增减'].iloc[0]) if not short_row.empty else 0
-                
-                pivot_data.append(seat_data)
+            # 合并数据：以多单持仓为主，补充其他数据
+            if not long_data.empty:
+                # 使用多单持仓的排名和席位
+                merged = long_data[['排名', '会员简称', '持仓量', '比上交易增减']].copy()
+                merged.columns = ['排名', '会员简称', '多单持仓', '多单变化']
+            elif not short_data.empty:
+                # 如果没有多单数据，使用空单数据
+                merged = short_data[['排名', '会员简称']].copy()
+                merged['多单持仓'] = 0
+                merged['多单变化'] = 0
+            else:
+                # 只有成交量数据
+                merged = volume_data[['排名', '会员简称']].copy()
+                merged['多单持仓'] = 0
+                merged['多单变化'] = 0
             
-            if pivot_data:
-                result[sheet_name] = pd.DataFrame(pivot_data)
+            # 添加空单持仓数据（通过会员简称匹配）
+            if not short_data.empty:
+                short_dict = dict(zip(short_data['会员简称'], 
+                                     zip(short_data['持仓量'], short_data['比上交易增减'])))
+                merged['空单持仓'] = merged['会员简称'].map(lambda x: int(short_dict.get(x, (0, 0))[0]))
+                merged['空单变化'] = merged['会员简称'].map(lambda x: int(short_dict.get(x, (0, 0))[1]))
+            else:
+                merged['空单持仓'] = 0
+                merged['空单变化'] = 0
+            
+            # 添加成交量数据（通过会员简称匹配）
+            if not volume_data.empty:
+                volume_dict = dict(zip(volume_data['会员简称'], volume_data['成交量']))
+                merged['成交量'] = merged['会员简称'].map(lambda x: int(volume_dict.get(x, 0)))
+            else:
+                merged['成交量'] = 0
+            
+            # 确保数值类型
+            for col in ['多单持仓', '多单变化', '空单持仓', '空单变化', '成交量']:
+                if col in merged.columns:
+                    merged[col] = pd.to_numeric(merged[col], errors='coerce').fillna(0).astype(int)
+            
+            # 重新排列列的顺序（与原系统一致）
+            column_order = ['排名', '会员简称', '成交量', '多单持仓', '多单变化', '空单持仓', '空单变化']
+            existing_cols = [col for col in column_order if col in merged.columns]
+            merged = merged[existing_cols]
+            
+            # 只保留前20行
+            merged = merged.head(20)
+            
+            if len(merged) > 0:
+                result[sheet_name] = merged
         
         return result
     
