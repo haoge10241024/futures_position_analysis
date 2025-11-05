@@ -263,11 +263,11 @@ class StreamlitApp:
             """)
             
             # 分析按钮
-            if st.button("🚀 开始分析", type="primary", use_container_width=True):
+            if st.button("🚀 开始分析", type="primary", width='stretch'):
                 self.run_analysis(trade_date, show_charts, max_display)
             
             # 清除缓存按钮
-            if st.button("🗑️ 清除缓存", use_container_width=True):
+            if st.button("🗑️ 清除缓存", width='stretch'):
                 st.session_state.analysis_results = None
                 st.session_state.last_analysis_date = None
                 st.success("缓存已清除")
@@ -789,7 +789,7 @@ class StreamlitApp:
                             '收盘价': closes,
                             '价格变化': self._calculate_price_changes(closes)
                         })
-                        st.dataframe(price_df, use_container_width=True)
+                        st.dataframe(price_df, width='stretch')
                         
                         # 显示价格趋势
                         st.markdown(f"**价格趋势**: {closes[0]:.2f} → {closes[-1]:.2f} (递减 {((closes[-1]-closes[0])/closes[0]*100):+.2f}%)")
@@ -809,7 +809,7 @@ class StreamlitApp:
                             '收盘价': closes,
                             '价格变化': self._calculate_price_changes(closes)
                         })
-                        st.dataframe(price_df, use_container_width=True)
+                        st.dataframe(price_df, width='stretch')
                         
                         # 显示价格趋势
                         st.markdown(f"**价格趋势**: {closes[0]:.2f} → {closes[-1]:.2f} (递增 {((closes[-1]-closes[0])/closes[0]*100):+.2f}%)")
@@ -956,7 +956,7 @@ class StreamlitApp:
                 data=excel_data,
                 file_name=f"futures_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width='stretch'
             )
         
         with col2:
@@ -967,7 +967,7 @@ class StreamlitApp:
                 data=text_data,
                 file_name=f"futures_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                width='stretch'
             )
     
     def render_detailed_data(self, results):
