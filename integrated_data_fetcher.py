@@ -58,42 +58,93 @@ class IntegratedDataFetcher:
     - 输出与现有系统兼容的格式
     """
     
-    def __init__(self, data_dir: str = "data", basis_data_path: str = None):
+    def __init__(self, data_dir: str = "data", online_mode: bool = True):
         """
         初始化集成数据获取器
         
         Args:
             data_dir: 数据保存目录
-            basis_data_path: 基差数据路径（用于获取准确的主力合约）
+            online_mode: 是否在线获取基差数据（默认True）
         """
         self.data_dir = data_dir
         self.symbol_names = SYMBOL_NAMES
         self.exchange_symbols = EXCHANGE_SYMBOLS
+        self.online_mode = online_mode
+        self.basis_cache = {}  # 缓存当天的基差数据
         self.ensure_data_directory()
         
-        # 设置基差数据路径
-        if basis_data_path:
-            self.basis_data_path = Path(basis_data_path)
+        if online_mode:
+            print("✅ 集成数据获取器已初始化（在线模式：实时获取基差数据）")
         else:
-            # 默认路径：交易席位/basis
-            default_basis_path = Path(__file__).parent / "交易席位" / "basis"
-            if default_basis_path.exists():
-                self.basis_data_path = default_basis_path
-                print(f"✅ 找到基差数据目录: {self.basis_data_path}")
-            else:
-                self.basis_data_path = None
-                print("⚠️ 未找到基差数据，将使用简化的主力合约推测方法")
-        
-        print("✅ 集成数据获取器已初始化（使用交易席位数据获取逻辑）")
+            print("✅ 集成数据获取器已初始化（离线模式：使用简化推测）")
     
     def ensure_data_directory(self):
         """确保数据目录存在"""
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
     
+    def fetch_online_basis_data(self, date_str: str) -> Optional[pd.DataFrame]:
+        """
+        在线获取基差数据（实时调用API）
+        
+        Args:
+            date_str: 日期 YYYYMMDD
+            
+        Returns:
+            基差数据DataFrame
+        """
+        # 检查缓存
+        if date_str in self.basis_cache:
+            return self.basis_cache[date_str]
+        
+        if not self.online_mode:
+            return None
+        
+        try:
+            import akshare as ak
+            import time
+            import random
+            
+            print(f"  📡 在线获取基差数据: {date_str}")
+            
+            # 调用AkShare API获取基差数据
+            df = ak.futures_spot_price(date_str)
+            
+            if df is None or df.empty:
+                print(f"    ⚠️ 基差数据为空")
+                return None
+            
+            # 检查品种列名（适应不同版本）
+            variety_col = None
+            if 'var' in df.columns:
+                variety_col = 'var'
+            elif 'symbol' in df.columns:
+                variety_col = 'symbol'
+            else:
+                print(f"    ⚠️ 未找到品种列")
+                return None
+            
+            # 标准化列名
+            if variety_col != 'symbol':
+                df = df.rename(columns={variety_col: 'symbol'})
+            
+            # 缓存数据
+            self.basis_cache[date_str] = df
+            
+            print(f"    ✅ 获取到 {len(df)} 个品种的基差数据")
+            
+            # 避免请求过快
+            time.sleep(random.uniform(0.5, 1.5))
+            
+            return df
+            
+        except Exception as e:
+            print(f"    ❌ 基差数据获取失败: {str(e)[:100]}")
+            return None
+    
     def get_main_contract_from_basis(self, symbol: str, date_str: str) -> Optional[str]:
         """
-        从基差数据中获取主力合约（最准确的方法）
+        从基差数据中获取主力合约（在线获取或离线读取）
         
         Args:
             symbol: 品种代码
@@ -102,38 +153,30 @@ class IntegratedDataFetcher:
         Returns:
             主力合约代码
         """
-        if not self.basis_data_path:
-            return None
+        # 优先在线获取
+        if self.online_mode:
+            basis_df = self.fetch_online_basis_data(date_str)
+            
+            if basis_df is not None:
+                try:
+                    # 查找对应品种
+                    symbol_data = basis_df[basis_df['symbol'] == symbol]
+                    
+                    if not symbol_data.empty:
+                        # 检查主力合约列（可能的列名）
+                        contract_cols = ['dominant_contract', '主力合约', 'main_contract']
+                        
+                        for col in contract_cols:
+                            if col in symbol_data.columns:
+                                contract = str(symbol_data.iloc[0][col]).strip()
+                                if contract and contract != 'nan':
+                                    # 修复合约代码格式
+                                    contract = self._fix_contract_code(contract, symbol)
+                                    return contract
+                except Exception as e:
+                    pass
         
-        basis_file = self.basis_data_path / symbol / "basis_data.csv"
-        
-        if not basis_file.exists():
-            return None
-        
-        try:
-            df = pd.read_csv(basis_file)
-            
-            if 'date' not in df.columns or 'dominant_contract' not in df.columns:
-                return None
-            
-            # 转换日期格式
-            df['date'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
-            target_date = datetime.strptime(date_str, '%Y%m%d')
-            
-            # 查找对应日期的主力合约
-            matching_rows = df[df['date'] == target_date]
-            
-            if not matching_rows.empty:
-                contract = str(matching_rows.iloc[0]['dominant_contract']).strip()
-                if contract and contract != 'nan':
-                    # 修复合约代码格式
-                    contract = self._fix_contract_code(contract, symbol)
-                    return contract
-            
-            return None
-            
-        except Exception as e:
-            return None
+        return None
     
     def _fix_contract_code(self, contract: str, symbol: str) -> str:
         """
@@ -447,6 +490,10 @@ class IntegratedDataFetcher:
         """
         获取所有交易所的数据
         
+        完整流程：
+        1. 先获取基差数据（包含所有品种的主力合约）
+        2. 遍历各交易所，使用主力合约获取持仓数据
+        
         Args:
             trade_date: 交易日期 YYYYMMDD
             progress_callback: 进度回调函数
@@ -455,8 +502,27 @@ class IntegratedDataFetcher:
             是否成功
         """
         print("\n" + "=" * 80)
-        print("使用集成数据获取器（交易席位方法）")
+        print("使用集成数据获取器（交易席位完整逻辑）")
         print("=" * 80)
+        
+        # 步骤1: 预先获取基差数据（一次性获取所有品种的主力合约）
+        if self.online_mode:
+            if progress_callback:
+                progress_callback("正在获取基差数据（确定主力合约）...", 0.05)
+            
+            print("\n【步骤1/2】获取基差数据")
+            print("-" * 80)
+            basis_df = self.fetch_online_basis_data(trade_date)
+            
+            if basis_df is not None:
+                print(f"  ✅ 成功获取基差数据，覆盖 {len(basis_df)} 个品种")
+                print(f"  📋 基差数据列: {list(basis_df.columns)}")
+            else:
+                print(f"  ⚠️ 基差数据获取失败，将使用简化推测方法")
+        
+        # 步骤2: 获取各交易所持仓数据
+        print("\n【步骤2/2】获取持仓数据")
+        print("-" * 80)
         
         exchanges = {
             "大商所": "大商所持仓.xlsx",
