@@ -259,7 +259,7 @@ class StreamlitApp:
             
             {performance_info}⏱️ **预计用时**: {"30秒-2分钟" if PERFORMANCE_OPTIMIZATION_AVAILABLE else "2-5分钟"}
             
-            💡 **智能跳过**: 广期所数据获取超时将自动跳过，确保分析流畅进行
+            💡 **在线模式**: 实时获取基差数据，准确识别主力合约，数据覆盖52个品种
             """)
             
             # 分析按钮
